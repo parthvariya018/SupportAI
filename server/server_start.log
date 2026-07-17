@@ -1,0 +1,8 @@
+
+⚠️   WARNING: Missing recommended environment variables:
+   • SMTP_HOST — some features will be disabled
+   • SMTP_USER — some features will be disabled
+   • SMTP_PASS — some features will be disabled
+   • EMAIL_FROM — some features will be disabled
+
+UNCAUGHT EXCEPTION: listen EADDRINUSE: address already in use :::5000

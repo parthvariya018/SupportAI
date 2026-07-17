@@ -1,0 +1,254 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+  body {
+    @apply bg-gray-50 text-gray-900 font-sans antialiased
+           dark:bg-gray-950 dark:text-gray-100;
+  }
+  ::-webkit-scrollbar        { @apply w-1.5 h-1.5; }
+  ::-webkit-scrollbar-track  { @apply bg-transparent; }
+  ::-webkit-scrollbar-thumb  { @apply bg-gray-300 rounded-full dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600; }
+  ::selection { @apply bg-primary-200 dark:bg-primary-800; }
+}
+
+@layer components {
+
+  /* ── Base card ─────────────────────────────────────────────────────────── */
+  .card {
+    @apply bg-white rounded-2xl border border-gray-200 shadow-sm
+           dark:bg-gray-900 dark:border-gray-800
+           transition-all duration-200;
+  }
+
+  /* ── Card with premium hover ──────────────────────────────────────────── */
+  .card-hover {
+    @apply card cursor-pointer
+           hover:shadow-card-hover hover:-translate-y-0.5
+           hover:border-gray-300 dark:hover:border-gray-700;
+  }
+
+  /* ── Glassmorphism card ────────────────────────────────────────────────── */
+  .card-glass {
+    @apply rounded-2xl border border-white/20
+           bg-white/70 dark:bg-gray-900/70
+           backdrop-blur-sm shadow-sm;
+  }
+
+  /* ── Input ─────────────────────────────────────────────────────────────── */
+  .input {
+    @apply w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm
+           bg-white outline-none
+           placeholder:text-gray-400
+           transition-all duration-200
+           focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20
+           focus:shadow-glow-sm
+           disabled:opacity-60 disabled:cursor-not-allowed
+           dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100
+           dark:focus:border-primary-400 dark:placeholder-gray-500;
+  }
+
+  /* ── Buttons ───────────────────────────────────────────────────────────── */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2
+           bg-primary-600 hover:bg-primary-700 active:scale-[0.97]
+           text-white font-medium text-sm rounded-xl px-4 py-2.5
+           transition-all duration-150
+           disabled:opacity-50 disabled:cursor-not-allowed
+           focus:outline-none focus:ring-2 focus:ring-primary-500/40
+           shadow-sm shadow-primary-600/20
+           hover:shadow-glow-sm;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2
+           bg-gray-100 hover:bg-gray-200 text-gray-700 active:scale-[0.97]
+           font-medium text-sm rounded-xl px-4 py-2.5
+           transition-all duration-150
+           disabled:opacity-50 disabled:cursor-not-allowed
+           dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200;
+  }
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2
+           bg-red-50 hover:bg-red-100 text-red-600 active:scale-[0.97]
+           font-medium text-sm rounded-xl px-4 py-2.5
+           transition-all duration-150
+           disabled:opacity-50 disabled:cursor-not-allowed
+           dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400;
+  }
+
+  /* ── Badge ─────────────────────────────────────────────────────────────── */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-medium rounded-full;
+  }
+
+  /* ── Skeleton shimmer ──────────────────────────────────────────────────── */
+  /* Replaces the plain pulse with a directional shimmer sweep */
+  .skeleton {
+    @apply rounded-lg overflow-hidden relative bg-gray-200 dark:bg-gray-800;
+  }
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255,255,255,0.55) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
+  }
+  .dark .skeleton::after {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255,255,255,0.07) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+  }
+
+  /* ── Labels ────────────────────────────────────────────────────────────── */
+  .label {
+    @apply block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5;
+  }
+  .page-title {
+    @apply text-2xl font-bold text-gray-900 dark:text-white;
+  }
+
+  /* ── Animated gradient border ──────────────────────────────────────────── */
+  .gradient-border {
+    position: relative;
+    border-radius: 1rem;
+  }
+  .gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6, #3b82f6);
+    background-size: 200% 200%;
+    animation: shimmer 3s linear infinite;
+    z-index: 0;
+  }
+  .gradient-border > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Glow ring (for active/selected states) ────────────────────────────── */
+  .ring-glow {
+    @apply ring-2 ring-primary-500/40 shadow-glow-sm;
+  }
+
+  /* ── Number counter animation ──────────────────────────────────────────── */
+  .count-up {
+    @apply tabular-nums;
+    transition: all 0.6s cubic-bezier(0.16,1,0.3,1);
+  }
+
+  /* ── Stagger children helper ───────────────────────────────────────────── */
+  /* Usage: <div className="stagger-children"> — each direct child auto-delays */
+  .stagger-children > *:nth-child(1)  { animation-delay: 0ms; }
+  .stagger-children > *:nth-child(2)  { animation-delay: 60ms; }
+  .stagger-children > *:nth-child(3)  { animation-delay: 120ms; }
+  .stagger-children > *:nth-child(4)  { animation-delay: 180ms; }
+  .stagger-children > *:nth-child(5)  { animation-delay: 240ms; }
+  .stagger-children > *:nth-child(6)  { animation-delay: 300ms; }
+  .stagger-children > *:nth-child(7)  { animation-delay: 360ms; }
+  .stagger-children > *:nth-child(8)  { animation-delay: 420ms; }
+
+  /* ── Page transition wrapper ───────────────────────────────────────────── */
+  .page-enter {
+    @apply animate-fade-in-up;
+  }
+
+  /* ── Recharts dark mode ────────────────────────────────────────────────── */
+  .recharts-text { @apply fill-gray-600 dark:fill-gray-400; }
+  .recharts-cartesian-grid-horizontal line,
+  .recharts-cartesian-grid-vertical line {
+    @apply stroke-gray-200 dark:stroke-gray-800;
+  }
+
+  /* ── Focus ring ────────────────────────────────────────────────────────── */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-primary-500/40 ring-offset-2
+           ring-offset-white dark:ring-offset-gray-900;
+  }
+
+  /* ── Nav link active indicator ─────────────────────────────────────────── */
+  .nav-active-dot {
+    @apply w-1.5 h-1.5 rounded-full bg-white/70 animate-pulse-slow;
+  }
+}
+
+@layer utilities {
+  /* Gradient text */
+  .text-gradient {
+    @apply bg-clip-text text-transparent
+           bg-gradient-to-r from-primary-600 to-violet-600;
+  }
+  .text-gradient-gold {
+    @apply bg-clip-text text-transparent
+           bg-gradient-to-r from-amber-400 to-orange-500;
+  }
+
+  /* Background gradients */
+  .gradient-primary  { @apply bg-gradient-to-br from-primary-500 to-primary-700; }
+  .gradient-success  { @apply bg-gradient-to-br from-emerald-500 to-emerald-700; }
+  .gradient-warning  { @apply bg-gradient-to-br from-amber-400 to-amber-600; }
+  .gradient-danger   { @apply bg-gradient-to-br from-red-500 to-red-700; }
+  .gradient-premium  { @apply bg-gradient-to-br from-violet-600 via-primary-600 to-cyan-500; }
+
+  /* Noise texture overlay (subtle premium feel) */
+  .texture-noise {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  }
+
+  /* Animated underline for links */
+  .link-underline {
+    @apply relative;
+  }
+  .link-underline::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-0 h-px bg-primary-500 transition-all duration-300;
+  }
+  .link-underline:hover::after {
+    @apply w-full;
+  }
+}
+
+/* ── Global keyframes (needed by .skeleton::after etc.) ─────────────────────── */
+@keyframes shimmer {
+  from { background-position: -200% center; }
+  to   { background-position:  200% center; }
+}
+
+/* Ripple for Button component */
+@keyframes ripple {
+  to { transform: scale(2.5); opacity: 0; }
+}
+
+/* Floating orb background animation */
+@keyframes orb-float {
+  0%,100% { transform: translate(0, 0) scale(1); }
+  33%     { transform: translate(30px, -20px) scale(1.05); }
+  66%     { transform: translate(-20px, 15px) scale(0.96); }
+}
+.orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(60px);
+  opacity: 0.35;
+  animation: orb-float 10s ease-in-out infinite;
+}
+.orb-delayed { animation-delay: -4s; }
+.orb-slow    { animation-duration: 14s; }

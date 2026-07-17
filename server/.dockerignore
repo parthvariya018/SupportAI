@@ -1,0 +1,21 @@
+# Dependencies — reinstalled inside the image
+node_modules
+
+# Local secrets — NEVER bake into the image
+.env
+
+# Dev tooling
+.env.example
+nodemon.json
+*.log
+
+# Test artifacts
+uploads/*.pdf
+uploads/*.tmp
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+.vscode
+.idea
+*.swp
