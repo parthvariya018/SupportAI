@@ -213,7 +213,7 @@ export default function Chatbot() {
     setMessages(p => [...p, { role: 'user', content: text, timestamp: new Date() }]);
     setSending(true);
 
-    const canStream = modelList.find(m => m.id === selectedModel)?.supportsStreaming ?? false;
+    const canStream = false; // streaming disabled — AQ. key format incompatible with streamGenerateContent
 
     try {
       if (canStream) {
