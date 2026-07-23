@@ -30,6 +30,7 @@ const companySchema = new mongoose.Schema({
     totalPurchased: { type: Number, default: 0 },
     totalConsumed:  { type: Number, default: 0 },
     lastTopUpAt:    { type: Date },
+    weeklyRefillAt: { type: Date, default: () => new Date() }, // tracks last weekly refill
   },
 
   // ── Stripe ────────────────────────────────────────────────────────────────

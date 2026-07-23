@@ -13,6 +13,12 @@ exports.register = catchAsync(async (req, res, next) => {
     return next(new AppError('Email already registered', 409));
 
   const company = await Company.create({ name: companyName, email });
+
+  // Free plan starts with 50 credits
+  company.credits.balance        = 50;
+  company.credits.totalPurchased = 50;
+  company.credits.weeklyRefillAt = new Date();
+  await company.save();
   const user    = await User.create({
     companyId: company._id, name, email, password,
     role: 'owner',
@@ -41,6 +47,24 @@ exports.login = catchAsync(async (req, res, next) => {
   // Update last seen
   user.lastSeenAt = new Date();
   await user.save({ validateModifiedOnly: true });
+
+  // Weekly credit refill for free plan — only if credits were used (balance < 50)
+  if (user.companyId.plan === 'free') {
+    const now          = new Date();
+    const lastRefill   = new Date(user.companyId.credits?.weeklyRefillAt || 0);
+    const daysSince    = (now - lastRefill) / (1000 * 60 * 60 * 24);
+    const balance      = user.companyId.credits?.balance ?? 0;
+
+    if (daysSince >= 7 && balance < 50) {
+      await Company.findByIdAndUpdate(user.companyId._id, {
+        $set: {
+          'credits.balance':        50,
+          'credits.weeklyRefillAt': now,
+          'credits.lastTopUpAt':    now,
+        },
+      });
+    }
+  }
 
   res.json({
     status: 'success',
