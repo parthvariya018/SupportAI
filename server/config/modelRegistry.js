@@ -41,15 +41,15 @@ const PLAN_ORDER = ['free', 'starter', 'pro', 'enterprise'];
 const MODEL_REGISTRY = [
   // ── Gemini ──────────────────────────────────────────────────────────────────
   {
-    id:                          'gemini-2.5-flash',
-    displayName:                 'Gemini 2.5 Flash',
+    id:                          'gemini-1.5-flash',
+    displayName:                 'Gemini 1.5 Flash',
     provider:                    'gemini',
     requiredPlan:                'free',
     supportsStreaming:            true,
     contextWindow:               1_000_000,
     enabled:                     true,
-    inputCostPerMillionTokens:   0.30,
-    outputCostPerMillionTokens:  2.50,
+    inputCostPerMillionTokens:   0.075,
+    outputCostPerMillionTokens:  0.30,
   },
 
   // ── OpenAI ───────────────────────────────────────────────────────────────────
