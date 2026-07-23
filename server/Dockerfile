@@ -6,8 +6,9 @@ WORKDIR /app
 # Copy manifests first so this layer is cached unless deps change
 COPY package.json package-lock.json ./
 
-# ci install: exact versions, no scripts, no devDeps
-RUN npm ci --omit=dev --ignore-scripts
+# ci install: exact versions, no devDeps
+# pdf-parse needs its postinstall script to copy test files
+RUN npm ci --omit=dev
 
 # ── Stage 2: production runner ────────────────────────────────────────────────
 FROM node:20-alpine AS runner

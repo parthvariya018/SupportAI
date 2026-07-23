@@ -13,9 +13,18 @@
  * is a no-op so the rest of the app degrades gracefully.
  */
 
-const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
+
+// ── Lazy AWS SDK loader ───────────────────────────────────────────────────────
+function getS3Commands() {
+  try {
+    const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+    return { S3Client, PutObjectCommand, DeleteObjectCommand };
+  } catch {
+    return null;
+  }
+}
 
 // ── Detect configuration ──────────────────────────────────────────────────────
 const isStorageConfigured = () =>
@@ -35,6 +44,9 @@ function getClient() {
       'and STORAGE_BUCKET in your .env file.'
     );
   }
+  const sdk = getS3Commands();
+  if (!sdk) throw new Error('AWS SDK not installed. Add @aws-sdk/client-s3 to dependencies.');
+  const { S3Client } = sdk;
   _client = new S3Client({
     region:   process.env.STORAGE_REGION || 'auto',
     endpoint: process.env.STORAGE_ENDPOINT,
@@ -89,9 +101,10 @@ function buildPublicUrl(key) {
  */
 async function uploadToStorage(buffer, companyId, sanitizedName, mimetype = 'application/pdf') {
   const client = getClient();
+  const sdk    = getS3Commands();
   const key    = buildKey(companyId, sanitizedName);
 
-  await client.send(new PutObjectCommand({
+  await client.send(new sdk.PutObjectCommand({
     Bucket:      process.env.STORAGE_BUCKET,
     Key:         key,
     Body:        buffer,
@@ -120,8 +133,9 @@ async function deleteFromStorage(key) {
   if (!isStorageConfigured()) return;
 
   const client = getClient();
+  const sdk    = getS3Commands();
   try {
-    await client.send(new DeleteObjectCommand({
+    await client.send(new sdk.DeleteObjectCommand({
       Bucket: process.env.STORAGE_BUCKET,
       Key:    key,
     }));
