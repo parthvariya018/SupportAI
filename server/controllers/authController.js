@@ -55,7 +55,7 @@ exports.login = catchAsync(async (req, res, next) => {
     const daysSince    = (now - lastRefill) / (1000 * 60 * 60 * 24);
     const balance      = user.companyId.credits?.balance ?? 0;
 
-    if (daysSince >= 7 && balance < 50) {
+    if ((daysSince >= 7 || !user.companyId.credits?.weeklyRefillAt) && balance < 50) {
       await Company.findByIdAndUpdate(user.companyId._id, {
         $set: {
           'credits.balance':        50,
