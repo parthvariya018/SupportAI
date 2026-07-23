@@ -51,6 +51,17 @@ const MODEL_REGISTRY = [
     inputCostPerMillionTokens:   0.075,
     outputCostPerMillionTokens:  0.30,
   },
+  {
+    id:                          'gemini-2.0-flash',
+    displayName:                 'Gemini 2.0 Flash',
+    provider:                    'gemini',
+    requiredPlan:                'free',
+    supportsStreaming:            true,
+    contextWindow:               1_000_000,
+    enabled:                     true,
+    inputCostPerMillionTokens:   0.10,
+    outputCostPerMillionTokens:  0.40,
+  },
 
   // ── OpenAI ───────────────────────────────────────────────────────────────────
   {

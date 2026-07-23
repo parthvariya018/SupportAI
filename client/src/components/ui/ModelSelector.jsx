@@ -6,7 +6,8 @@ import { getModels } from '../../api';
 // ── Client-side full model catalogue (mirrors modelRegistry.js) ───────────────
 // Used only to show locked models — the server is the source of truth for access.
 const ALL_MODELS = [
-  { id: 'gemini-2.5-flash', displayName: 'Gemini 2.5 Flash', provider: 'gemini', supportsStreaming: true, requiredPlan: 'free'       },
+  { id: 'gemini-1.5-flash', displayName: 'Gemini 1.5 Flash', provider: 'gemini', supportsStreaming: true, requiredPlan: 'free'       },
+  { id: 'gemini-2.0-flash', displayName: 'Gemini 2.0 Flash', provider: 'gemini', supportsStreaming: true, requiredPlan: 'free'       },
   { id: 'gpt-4.1-mini',     displayName: 'GPT-4.1 Mini',     provider: 'openai', supportsStreaming: true, requiredPlan: 'starter'    },
   { id: 'gpt-4.1',          displayName: 'GPT-4.1',          provider: 'openai', supportsStreaming: true, requiredPlan: 'pro'        },
   { id: 'claude-sonnet-4',  displayName: 'Claude Sonnet 4',  provider: 'claude', supportsStreaming: true, requiredPlan: 'pro'        },
