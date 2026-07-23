@@ -6,7 +6,6 @@
  * wrapped in a class so the AIProviderFactory can swap providers transparently.
  */
 
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 const AppError       = require('../../utils/AppError');
 const BaseProvider   = require('./BaseProvider');
 const { MODEL_REGISTRY } = require('../../config/modelRegistry');
@@ -184,43 +183,50 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 class GeminiProvider extends BaseProvider {
   constructor() {
     super('GeminiProvider');
-
     if (!process.env.GEMINI_API_KEY) {
       console.warn('[GeminiProvider] ⚠️  GEMINI_API_KEY not set — AI responses will fail');
     }
-
-    this._genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
   }
 
-  // ── Private: single model call with timeout ─────────────────────────────────
+  // ── Private: single model call via direct REST (avoids SDK streaming issues)
   async _callModel(modelName, systemPrompt, trimmedHistory, userMessage) {
-    const model = this._genAI.getGenerativeModel({
-      model:             modelName,
-      systemInstruction: systemPrompt,
-      generationConfig:  GENERATION_CONFIG,
-    });
+    const apiKey = process.env.GEMINI_API_KEY;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
-    const chat = model.startChat({
-      history: trimmedHistory.map(m => ({
+    const contents = [
+      ...trimmedHistory.map(m => ({
         role:  m.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: m.content }],
       })),
-    });
+      { role: 'user', parts: [{ text: userMessage }] },
+    ];
 
-    let timeoutHandle;
-    const timeoutPromise = new Promise((_, reject) => {
-      timeoutHandle = setTimeout(
-        () => reject(Object.assign(new Error('Request timeout'), { name: 'AbortError' })),
-        REQUEST_TIMEOUT_MS
-      );
-    });
+    const body = {
+      system_instruction: { parts: [{ text: systemPrompt }] },
+      contents,
+      generationConfig: GENERATION_CONFIG,
+    };
+
+    const controller = new AbortController();
+    const timeoutHandle = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
     try {
-      const result = await Promise.race([chat.sendMessage(userMessage), timeoutPromise]);
+      const res = await fetch(url, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(body),
+        signal:  controller.signal,
+      });
       clearTimeout(timeoutHandle);
 
-      const reply        = result.response.text();
-      const apiUsage     = result.response?.usageMetadata;
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`[${res.status} ${res.statusText}] ${errText}`);
+      }
+
+      const json = await res.json();
+      const reply = json.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+      const apiUsage = json.usageMetadata;
       const inputTokens  = apiUsage?.promptTokenCount     ?? estimateTokens(systemPrompt + userMessage);
       const outputTokens = apiUsage?.candidatesTokenCount ?? estimateTokens(reply);
 
@@ -296,42 +302,11 @@ class GeminiProvider extends BaseProvider {
     return null;
   }
 
-  // ── Public: streaming ────────────────────────────────────────────────────────
+  // ── Public: streaming (delegates to generateReply — streaming not used)
   async * generateStream(documents, history, userMessage, companyName = '', modelId = null) {
-    const safeMessage = sanitizeUserMessage(userMessage);
-
-    const { contextText, sources } = retrieveContext(documents, safeMessage);
-    const systemPrompt             = buildSystemPrompt(companyName, contextText);
-    const trimmedHistory           = history.slice(-MAX_HISTORY_TURNS);
-    const modelName                = modelId ?? MODEL_CHAIN[0];
-
-    const model = this._genAI.getGenerativeModel({
-      model:             modelName,
-      systemInstruction: systemPrompt,
-      generationConfig:  GENERATION_CONFIG,
-    });
-
-    const chat = model.startChat({
-      history: trimmedHistory.map(m => ({
-        role:  m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }],
-      })),
-    });
-
-    const streamResult = await chat.sendMessageStream(safeMessage);
-
-    let fullReply = '';
-    for await (const chunk of streamResult.stream) {
-      const text = chunk.text();
-      if (text) { fullReply += text; yield text; }
-    }
-
-    const finalResponse = await streamResult.response;
-    const apiUsage      = finalResponse?.usageMetadata;
-    const inputTokens   = apiUsage?.promptTokenCount     ?? estimateTokens(systemPrompt + safeMessage);
-    const outputTokens  = apiUsage?.candidatesTokenCount ?? estimateTokens(fullReply);
-
-    return { sources, model: modelName, usage: { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens } };
+    const result = await this.generateReply(documents, history, userMessage, companyName, modelId);
+    yield result.reply;
+    return { sources: result.sources, model: result.model, usage: result.usage };
   }
 
   // ── Public: BaseProvider interface ──────────────────────────────────────────
