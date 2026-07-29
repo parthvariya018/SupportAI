@@ -188,6 +188,22 @@ class GeminiProvider extends BaseProvider {
     }
   }
 
+  // ── healthCheck ───────────────────────────────────────────────────────────────
+  async healthCheck() {
+    if (!process.env.GEMINI_API_KEY) return 'unhealthy';
+    try {
+      const model = MODEL_CHAIN[0];
+      const url   = `https://generativelanguage.googleapis.com/v1beta/models/${model}?key=${process.env.GEMINI_API_KEY}`;
+      const ctrl  = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 4_000);
+      const res   = await fetch(url, { signal: ctrl.signal });
+      clearTimeout(timer);
+      return res.ok ? 'healthy' : 'unhealthy';
+    } catch {
+      return 'unhealthy';
+    }
+  }
+
   // ── Private: single model call via direct REST (avoids SDK streaming issues)
   async _callModel(modelName, systemPrompt, trimmedHistory, userMessage) {
     const apiKey = process.env.GEMINI_API_KEY;
@@ -396,20 +412,19 @@ class GeminiProvider extends BaseProvider {
   }
 
   // ── Public: BaseProvider interface ──────────────────────────────────────────
-  async generateReply(documents, history, userMessage, companyName = '', modelId = null) {
+  async generateReply(documents, history, userMessage, companyName = '', modelId = null, opts = {}) {
+    const { requestId } = opts;
     const safeMessage = sanitizeUserMessage(userMessage);
 
     const { contextText, sources } = retrieveContext(documents, safeMessage);
     const systemPrompt             = buildSystemPrompt(companyName, contextText);
     const trimmedHistory           = history.slice(-MAX_HISTORY_TURNS);
 
-    // Build the chain: requested model first, then remaining registry models as
-    // fallbacks. Deduplication ensures the requested model isn't tried twice.
-    // Trust the modelId directly — validation is the caller's responsibility.
     const requested = modelId ?? MODEL_CHAIN[0];
     const chain = [requested, ...MODEL_CHAIN.filter((m) => m !== requested)];
 
     log('info', 'request_start', {
+      requestId,
       requestedModel: requested,
       chain,
       historyTurns:   trimmedHistory.length,
@@ -428,7 +443,7 @@ class GeminiProvider extends BaseProvider {
       }
 
       if (result) {
-        log('info', 'request_complete', { model: modelName });
+        log('info', 'request_complete', { requestId, model: modelName });
         return {
           reply:   result.reply,
           sources,
@@ -444,7 +459,7 @@ class GeminiProvider extends BaseProvider {
       lastErrorMessage = `${modelName} unavailable after ${MAX_RETRIES} retries`;
     }
 
-    log('error', 'all_models_failed', { models: MODEL_CHAIN, lastError: lastErrorMessage });
+    log('error', 'all_models_failed', { requestId, models: MODEL_CHAIN, lastError: lastErrorMessage });
 
     throw new AppError(
       `AI service is temporarily unavailable: ${lastErrorMessage}. Please try again in a moment.`,

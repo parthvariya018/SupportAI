@@ -50,43 +50,47 @@ const sendError = (err, req, res) => {
   if (err.isOperational) {
     // Known, expected errors — safe to expose the message
     return res.status(err.statusCode).json({
-      status:     'error',
-      message:    err.message,
-      errorCode:  err.errorCode  || `HTTP_${err.statusCode}`,
-      requestId,
+      success: false,
+      error: {
+        code:      err.code      || `HTTP_${err.statusCode}`,
+        message:   err.message,
+        requestId,
+      },
     });
   }
 
-  // Programmer / unexpected errors
-  // Log the full error with context for debugging
+  // Programmer / unexpected errors — log full context, never leak to client
   console.error(JSON.stringify({
-    ts:         new Date().toISOString(),
-    event:      'unhandled_error',
+    ts:        new Date().toISOString(),
+    event:     'unhandled_error',
     requestId,
-    method:     req.method,
-    path:       req.originalUrl,
-    userId:     req.user?._id,
-    companyId:  req.companyId,
-    message:    err.message,
-    stack:      err.stack,
+    method:    req.method,
+    path:      req.originalUrl,
+    userId:    req.user?._id,
+    companyId: req.companyId,
+    message:   err.message,
+    stack:     err.stack,
   }));
 
   if (isDev) {
-    // In development, expose everything for easier debugging
     return res.status(500).json({
-      status:    'error',
-      message:   err.message,
-      stack:     err.stack,
-      requestId,
+      success: false,
+      error: {
+        code:      'INTERNAL_ERROR',
+        message:   err.message,
+        requestId,
+        stack:     err.stack,
+      },
     });
   }
 
-  // In production, never leak internal details to the client
   res.status(500).json({
-    status:    'error',
-    message:   'An unexpected error occurred. Please try again.',
-    errorCode: 'INTERNAL_SERVER_ERROR',
-    requestId, // lets the user quote this when reporting the issue
+    success: false,
+    error: {
+      code:      'INTERNAL_ERROR',
+      message:   'An unexpected error occurred. Please try again.',
+      requestId,
+    },
   });
 };
 

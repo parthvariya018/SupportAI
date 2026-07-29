@@ -81,4 +81,23 @@ function getProvider(modelId) {
   return _instances[key];
 }
 
-module.exports = { getProvider };
+/**
+ * healthCheckAll() — pings every loaded provider instance.
+ * Only checks providers already instantiated (lazy — no cold starts).
+ * Unloaded providers are reported as 'unknown'.
+ *
+ * @returns {Promise<Record<string, 'healthy'|'unhealthy'|'unknown'>>}
+ */
+async function healthCheckAll() {
+  const results = {};
+  for (const key of Object.keys(PROVIDERS)) {
+    if (_instances[key]) {
+      results[key] = await _instances[key].healthCheck().catch(() => 'unhealthy');
+    } else {
+      results[key] = 'unknown';
+    }
+  }
+  return results;
+}
+
+module.exports = { getProvider, healthCheckAll };
