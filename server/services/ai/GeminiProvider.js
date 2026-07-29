@@ -21,10 +21,10 @@ const MODEL_CHAIN = MODEL_REGISTRY
   .map((m) => m.id);
 
 const GENERATION_CONFIG  = { temperature: 0.3, maxOutputTokens: 1024 };
-const MAX_HISTORY_TURNS  = 10;
-const REQUEST_TIMEOUT_MS = 30_000;
-const MAX_RETRIES        = 3;
-const BASE_DELAY_MS      = 1_000;
+const MAX_HISTORY_TURNS  = 6;
+const REQUEST_TIMEOUT_MS = 15_000;
+const MAX_RETRIES        = 2;
+const BASE_DELAY_MS      = 500;
 
 const CHUNK_SIZE        = 800;
 const CHUNK_OVERLAP     = 100;
@@ -207,6 +207,14 @@ class GeminiProvider extends BaseProvider {
       generationConfig: GENERATION_CONFIG,
     };
 
+    // DEBUG — log sanitised URL and full request body before sending
+    const debugUrl = url.replace(/key=[^&]+/, 'key=REDACTED');
+    console.debug('[_callModel] DEBUG request', JSON.stringify({
+      model:      modelName,
+      url:        debugUrl,
+      body,
+    }, null, 2));
+
     const controller = new AbortController();
     const timeoutHandle = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -221,6 +229,14 @@ class GeminiProvider extends BaseProvider {
 
       if (!res.ok) {
         const errText = await res.text();
+        // DEBUG — log full error context before throwing
+        console.debug('[_callModel] DEBUG error response', JSON.stringify({
+          model:          modelName,
+          url:            debugUrl,
+          httpStatus:     res.status,
+          httpStatusText: res.statusText,
+          googleBody:     errText,
+        }, null, 2));
         throw new Error(`[${res.status} ${res.statusText}] ${errText}`);
       }
 
@@ -302,11 +318,81 @@ class GeminiProvider extends BaseProvider {
     return null;
   }
 
-  // ── Public: streaming (delegates to generateReply — streaming not used)
+  // ── Public: streaming via Gemini SSE API
   async * generateStream(documents, history, userMessage, companyName = '', modelId = null) {
-    const result = await this.generateReply(documents, history, userMessage, companyName, modelId);
-    yield result.reply;
-    return { sources: result.sources, model: result.model, usage: result.usage };
+    const safeMessage = sanitizeUserMessage(userMessage);
+    const { contextText, sources } = retrieveContext(documents, safeMessage);
+    const systemPrompt   = buildSystemPrompt(companyName, contextText);
+    const trimmedHistory = history.slice(-MAX_HISTORY_TURNS);
+    const requested      = modelId ?? MODEL_CHAIN[0];
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${requested}:streamGenerateContent?alt=sse&key=${apiKey}`;
+
+    const contents = [
+      ...trimmedHistory.map(m => ({
+        role:  m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      })),
+      { role: 'user', parts: [{ text: safeMessage }] },
+    ];
+
+    const body = {
+      system_instruction: { parts: [{ text: systemPrompt }] },
+      contents,
+      generationConfig: GENERATION_CONFIG,
+    };
+
+    const controller    = new AbortController();
+    const timeoutHandle = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+    try {
+      const res = await fetch(url, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(body),
+        signal:  controller.signal,
+      });
+      clearTimeout(timeoutHandle);
+
+      if (!res.ok) {
+        const errText = await res.text();
+        // Fall back to non-streaming on error
+        const result = await this.generateReply(documents, history, userMessage, companyName, modelId);
+        yield result.reply;
+        return { sources: result.sources, model: result.model, usage: result.usage };
+      }
+
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let   buffer  = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+        for (const line of lines) {
+          if (!line.startsWith('data:')) continue;
+          const data = line.slice(5).trim();
+          if (data === '[DONE]') continue;
+          try {
+            const json  = JSON.parse(data);
+            const token = json.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (token) yield token;
+          } catch {}
+        }
+      }
+
+      return { sources, model: requested };
+    } catch (err) {
+      clearTimeout(timeoutHandle);
+      // Fall back to non-streaming
+      const result = await this.generateReply(documents, history, userMessage, companyName, modelId);
+      yield result.reply;
+      return { sources: result.sources, model: result.model, usage: result.usage };
+    }
   }
 
   // ── Public: BaseProvider interface ──────────────────────────────────────────
