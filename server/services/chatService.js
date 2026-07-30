@@ -132,7 +132,6 @@ class ChatService {
       throw new AppError('Chat processing failed', 500, 'CHAT_ERROR');
     }
   }
-}
 
   // ─── processStreamMessage ────────────────────────────────────────────────────
   /**

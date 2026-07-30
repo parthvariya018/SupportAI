@@ -69,9 +69,9 @@ const widgetCors = cors({
 // ── Security middleware ───────────────────────────────────────────────────────
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
-// Preflight for widget endpoints — must be registered before the global dashboard policy
-app.options('/api/chat/message', widgetCors);
-app.options('/api/leads',        widgetCors);
+// Preflight for widget/public endpoints — registered before the global dashboard policy
+app.options('/api/chat/*',  widgetCors);
+app.options('/api/leads',   widgetCors);
 
 // All other preflight requests go through the strict dashboard policy
 app.options('*', dashboardCors);
@@ -134,17 +134,17 @@ const authLimiter = rateLimit({
 
 app.use('/api', globalLimiter);
 
-// ── Routes ────────────────────────────────────────────────────────────────────
-// Widget endpoints are mounted first with widgetCors injected inline so the
-// open CORS headers are written before any route handler runs.
-// The same router is also mounted at /api/chat for dashboard history routes —
-// those requests come from CLIENT_URL and get dashboardCors from the global use().
-app.use('/api/chat/message', widgetCors, chatLimiter, require('./routes/chat'));
-app.use('/api/leads',        widgetCors,              require('./routes/leads'));
+const createChatModule = require('./bootstrap/createChatModule');
+const { router: chatRouter } = createChatModule();
+
+// Routes 
+// widgetCors is applied here so open CORS headers are written before any handler.
+// The single chatRouter handles both widget (x-api-key) and dashboard (JWT) paths.
+app.use('/api/chat', widgetCors, chatLimiter,chatRouter);
+app.use('/api/leads', widgetCors, require('./routes/leads'));
 
 app.use('/api/auth',      authLimiter,  require('./routes/auth'));
 app.use('/api/documents',              require('./routes/documents'));
-app.use('/api/chat',      chatLimiter,  require('./routes/chat'));
 app.use('/api/dashboard',              require('./routes/dashboard'));
 app.use('/api/settings',               require('./routes/settings'));
 app.use('/api/tickets',                require('./routes/tickets'));
