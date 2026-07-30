@@ -8,17 +8,15 @@
 
 const AppError       = require('../../utils/AppError');
 const BaseProvider   = require('./BaseProvider');
-const { MODEL_REGISTRY } = require('../../config/modelRegistry');
+const { MODELS, PLAN_ORDER } = require('../../config/modelRegistry');
 
 // ── Config ────────────────────────────────────────────────────────────────────
 // Derive the model chain from the registry — all enabled Gemini models,
-// ordered by requiredPlan rank (most capable first) so the fallback chain
-// degrades gracefully when a model is unavailable.
-const PLAN_ORDER = ['free', 'starter', 'pro', 'enterprise'];
-const MODEL_CHAIN = MODEL_REGISTRY
-  .filter((m) => m.provider === 'gemini' && m.enabled)
-  .sort((a, b) => PLAN_ORDER.indexOf(b.requiredPlan) - PLAN_ORDER.indexOf(a.requiredPlan))
-  .map((m) => m.id);
+// ordered by plan rank (most capable first) so the fallback chain degrades gracefully.
+const MODEL_CHAIN = Object.entries(MODELS)
+  .filter(([, m]) => m.provider === 'gemini' && m.enabled)
+  .sort(([, a], [, b]) => PLAN_ORDER.indexOf(b.minimumPlan) - PLAN_ORDER.indexOf(a.minimumPlan))
+  .map(([id]) => id);
 
 const GENERATION_CONFIG  = { temperature: 0.3, maxOutputTokens: 1024 };
 const MAX_HISTORY_TURNS  = 6;
@@ -335,12 +333,20 @@ class GeminiProvider extends BaseProvider {
   }
 
   // ── Public: streaming via Gemini SSE API
-  async * generateStream(documents, history, userMessage, companyName = '', modelId = null) {
+  async * generateStream(documents, history, userMessage, companyName = '', modelId = null, opts = {}) {
     const safeMessage = sanitizeUserMessage(userMessage);
-    const { contextText, sources } = retrieveContext(documents, safeMessage);
-    const systemPrompt   = buildSystemPrompt(companyName, contextText);
     const trimmedHistory = history.slice(-MAX_HISTORY_TURNS);
     const requested      = modelId ?? MODEL_CHAIN[0];
+
+    let systemPrompt, sources;
+    if (opts.systemPrompt) {
+      systemPrompt = opts.systemPrompt;
+      sources = [];
+    } else {
+      const ctx = retrieveContext(documents, safeMessage);
+      systemPrompt = buildSystemPrompt(companyName, ctx.contextText);
+      sources = ctx.sources;
+    }
 
     const apiKey = process.env.GEMINI_API_KEY;
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${requested}:streamGenerateContent?alt=sse&key=${apiKey}`;
@@ -415,10 +421,19 @@ class GeminiProvider extends BaseProvider {
   async generateReply(documents, history, userMessage, companyName = '', modelId = null, opts = {}) {
     const { requestId } = opts;
     const safeMessage = sanitizeUserMessage(userMessage);
+    const trimmedHistory = history.slice(-MAX_HISTORY_TURNS);
 
-    const { contextText, sources } = retrieveContext(documents, safeMessage);
-    const systemPrompt             = buildSystemPrompt(companyName, contextText);
-    const trimmedHistory           = history.slice(-MAX_HISTORY_TURNS);
+    let systemPrompt, sources, contextChars;
+    if (opts.systemPrompt) {
+      systemPrompt = opts.systemPrompt;
+      sources      = [];
+      contextChars = systemPrompt.length;
+    } else {
+      const { contextText, sources: s } = retrieveContext(documents, safeMessage);
+      systemPrompt = buildSystemPrompt(companyName, contextText);
+      sources      = s;
+      contextChars = contextText.length;
+    }
 
     const requested = modelId ?? MODEL_CHAIN[0];
     const chain = [requested, ...MODEL_CHAIN.filter((m) => m !== requested)];
@@ -428,7 +443,7 @@ class GeminiProvider extends BaseProvider {
       requestedModel: requested,
       chain,
       historyTurns:   trimmedHistory.length,
-      contextChars:   contextText.length,
+      contextChars,
       messageLength:  safeMessage.length,
     });
 

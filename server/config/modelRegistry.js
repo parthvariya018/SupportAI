@@ -23,23 +23,23 @@ const PLAN_ORDER = [PLANS.FREE, PLANS.STARTER, PLANS.PRO, PLANS.ENTERPRISE];
 const MODELS = Object.freeze({
 
   // ── Gemini ──────────────────────────────────────────────────────────────
-  'gemini-1.5-flash': {
+  'gemini-2.5-flash': {
     provider:        PROVIDERS.GEMINI,
-    displayName:     'Gemini 1.5 Flash',
-    contextWindow:   1_000_000,   // tokens
+    displayName:     'Gemini 2.5 Flash',
+    contextWindow:   1_000_000,
     maxOutputTokens: 8_192,
     streaming:       true,
     minimumPlan:     PLANS.FREE,
     enabled:         true,
   },
 
-  'gemini-1.5-pro': {
+  'gemini-2.0-flash-lite': {
     provider:        PROVIDERS.GEMINI,
-    displayName:     'Gemini 1.5 Pro',
-    contextWindow:   2_000_000,
+    displayName:     'Gemini 2.0 Flash Lite',
+    contextWindow:   1_000_000,
     maxOutputTokens: 8_192,
     streaming:       true,
-    minimumPlan:     PLANS.PRO,
+    minimumPlan:     PLANS.FREE,
     enabled:         true,
   },
 
@@ -49,8 +49,28 @@ const MODELS = Object.freeze({
     contextWindow:   1_000_000,
     maxOutputTokens: 8_192,
     streaming:       true,
-    minimumPlan:     PLANS.STARTER,
+    minimumPlan:     PLANS.FREE,
     enabled:         true,
+  },
+
+  'gemini-1.5-flash': {
+    provider:        PROVIDERS.GEMINI,
+    displayName:     'Gemini 1.5 Flash (deprecated)',
+    contextWindow:   1_000_000,
+    maxOutputTokens: 8_192,
+    streaming:       true,
+    minimumPlan:     PLANS.FREE,
+    enabled:         false,
+  },
+
+  'gemini-1.5-pro': {
+    provider:        PROVIDERS.GEMINI,
+    displayName:     'Gemini 1.5 Pro (deprecated)',
+    contextWindow:   2_000_000,
+    maxOutputTokens: 8_192,
+    streaming:       true,
+    minimumPlan:     PLANS.PRO,
+    enabled:         false,
   },
 
   // ── OpenAI (future) ──────────────────────────────────────────────────────

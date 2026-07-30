@@ -88,11 +88,13 @@ class ChatService {
       const provider = this.factory.getProvider(company.modelId);
 
       // 5. Call provider
-      const aiResponse = await provider.chat(
-        systemPrompt,
+      const aiResponse = await provider.generateReply(
+        [],
         historyResult.messages,
         cleanMessage,
-        { requestId }
+        company.name,
+        company.modelId,
+        { requestId, systemPrompt }
       );
 
       const latency = Date.now() - start;
@@ -167,15 +169,22 @@ class ChatService {
       // Accumulate full reply for history persistence
       let fullReply = '';
 
-      await provider.stream(
-        systemPrompt,
+      const stream = provider.generateStream(
+        [],
         historyResult.messages,
         cleanMessage,
-        {
-          onChunk: (text) => { fullReply += text; onChunk(text); },
-          signal,
-        }
+        company.name,
+        company.modelId,
+        { requestId, signal, systemPrompt }
       );
+
+      for await (const chunk of stream) {
+        if (signal?.aborted) break;
+        if (typeof chunk === 'string') {
+          fullReply += chunk;
+          onChunk(chunk);
+        }
+      }
 
       const latency = Date.now() - start;
 
