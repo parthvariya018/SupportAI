@@ -188,7 +188,9 @@ export default function Chatbot() {
   const [messages,   setMessages]   = useState([WELCOME]);
   const [input,      setInput]      = useState('');
   const [sending,    setSending]    = useState(false);
-  const [sessionId,  setSessionId]  = useState(null);
+  const [sessionId,  setSessionId]  = useState(
+    () => `session-${crypto.randomUUID()}`
+  );
   const [selectedModel, setSelectedModel] = useState(null);
   const [modelList,     setModelList]     = useState([]);
   const [showHistory, setShowHistory] = useState(false); // mobile toggle
@@ -230,16 +232,14 @@ export default function Chatbot() {
           ),
         });
 
-        setSessionId(res.sessionId);
         setMessages(p => p.map(m =>
           m._streamKey === streamKey ? { ...m, sources: res.sources ?? [] } : m
         ));
         refetchHistory();
       } else {
         const res = await sendChatMessage({ message: text, sessionId, selectedModel });
-        setSessionId(res.sessionId);
         setMessages(p => [...p, {
-          role: 'assistant', content: res.reply, sources: res.sources, timestamp: new Date(),
+          role: 'assistant', content: res.data.reply, sources: res.data.sources, timestamp: new Date(),
         }]);
         refetchHistory();
       }
@@ -259,7 +259,7 @@ export default function Chatbot() {
   // ── reset chat ──────────────────────────────────────────────────────────────
   const resetChat = () => {
     setMessages([{ ...WELCOME, timestamp: new Date() }]);
-    setSessionId(null);
+    setSessionId(`session-${crypto.randomUUID()}`);
     setInput('');
     inputRef.current?.focus();
   };

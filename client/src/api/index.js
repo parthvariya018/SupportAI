@@ -62,8 +62,13 @@ export const deleteDocument = (id)   => api.delete(`/documents/${id}`);
 export const getModels = () => api.get('/models');
 
 // ── Chat ────────────────────────────────────────────────────────────────────
-export const sendChatMessage        = ({ selectedModel, ...rest }) =>
-  api.post('/chat/message', selectedModel ? { ...rest, modelId: selectedModel } : rest);
+export const sendChatMessage = ({ selectedModel, sessionId, ...rest }) => {
+  const sid = sessionId || `session-${crypto.randomUUID()}`;
+  return api.post('/chat/message', selectedModel
+    ? { ...rest, sessionId: sid, modelId: selectedModel }
+    : { ...rest, sessionId: sid }
+  );
+};
 
 /**
  * sendChatMessageStream — SSE streaming variant.
@@ -71,6 +76,7 @@ export const sendChatMessage        = ({ selectedModel, ...rest }) =>
  * Falls back to sendChatMessage if the model doesn't support streaming.
  */
 export function sendChatMessageStream({ message, sessionId, modelId, onToken }) {
+  const sid = sessionId || `session-${crypto.randomUUID()}`;
   return new Promise(async (resolve, reject) => {
     let raw;
     try {
@@ -86,7 +92,7 @@ export function sendChatMessageStream({ message, sessionId, modelId, onToken }) 
       raw = await fetch('/api/chat/stream', {
         method:  'POST',
         headers,
-        body:    JSON.stringify({ message, sessionId, modelId }),
+        body:    JSON.stringify({ message, sessionId: sid, modelId }),
       });
     } catch (err) {
       return reject({ message: err.message || 'Network error' });
