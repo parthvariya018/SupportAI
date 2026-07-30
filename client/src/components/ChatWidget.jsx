@@ -67,7 +67,9 @@ export default function ChatWidget({ apiKey, primaryColor = '#2563eb' }) {
   ]);
   const [input,     setInput]     = useState('');
   const [loading,   setLoading]   = useState(false);
-  const [sessionId, setSessionId] = useState(null);
+  const [sessionId, setSessionId] = useState(
+    () => `session-${Math.random().toString(36).slice(2)}-${Date.now()}`
+  );
   const [selectedModel, setSelectedModel] = useState(null);
   const [showLead,  setShowLead]  = useState(false);
   const [lead,      setLead]      = useState({ name: '', email: '', phone: '' });
@@ -101,8 +103,7 @@ export default function ChatWidget({ apiKey, primaryColor = '#2563eb' }) {
         { headers: { 'x-api-key': apiKey }, timeout: 35_000 }
       );
 
-      setSessionId(data.sessionId);
-      setMessages((prev) => [...prev, { role: 'assistant', content: data.reply }]);
+      setMessages((prev) => [...prev, { role: 'assistant', content: data.data.reply }]);
 
       // Show lead form after 3 exchanges if not already shown/submitted
       if (!showLead && !leadSent && messages.length >= 4) setShowLead(true);
